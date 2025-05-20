@@ -1,45 +1,38 @@
-from fastapi import FastAPI, Query
-from fastapi.openapi.utils import get_openapi
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+import requests
 
 app = FastAPI(
-    title="Data Discovery API",
+    title="HTML Content Fetcher",
+    description="This API fetches and returns the HTML content of a provided URL.",
     version="1.0.0",
-    description="Search for dashboards, datasets, or reports based on a user's query."
+    servers=[
+        {
+            "url": "https://project1-1-7tyj.onrender.com",  # 🔁 Replace with your deployed server address
+            "description": "Production Server"
+        }
+    ]
 )
 
-@app.get("/api/search", operation_id="searchController_getSearchResults")
-def search_data_assets(
-    query: str = Query(..., description="The user's natural language question, like 'sales data by region' or 'warranty claim dashboard'.")
-):
-    results = [
-        {
-            "title": "Regional Sales Dashboard",
-            "type": "Dashboard",
-            "link": "https://internal.url/dashboards/sales-region"
-        },
-        {
-            "title": "Warranty Claims Report",
-            "type": "Report",
-            "link": "https://internal.url/reports/warranty-claims"
-        },
-    ]
-    return {"query": query, "results": results}
+class URLData(BaseModel):
+    """Model containing the URL to fetch HTML from."""
+    url: str = Field(..., description="The URL to fetch HTML content from.")
 
-# ✅ Proper OpenAPI override with version and servers
-def custom_openapi():
-    if app.openapi_schema:
-        return app.openapi_schema
-    openapi_schema = get_openapi(
-        title=app.title,
-        version=app.version,
-        description=app.description,
-        routes=app.routes,
-    )
-    openapi_schema["openapi"] = "3.0.2"  # <- Force 3.0.2 version
-    openapi_schema["servers"] = [
-        {"url": "http://localhost:8000"}  # <- Required for some OpenAPI consumers
-    ]
-    app.openapi_schema = openapi_schema
-    return app.openapi_schema
+@app.post("/fetch-html/", response_description="HTML content of the provided URL")
+def fetch_html(data: URLData):
+    """
+    Fetch and return HTML from a given URL using HTTP GET.
 
-app.openapi = custom_openapi
+    Args:
+        data (URLData): JSON body with 'url' field.
+
+    Returns:
+        dict: A dictionary with key 'html_content'.
+    """
+    try:
+        response = requests.get(data.url)
+        response.raise_for_status()
+        return {"html_content": response.text}
+    except requests.RequestException as e:
+        raise HTTPException(status_code=400, detail=f"Error fetching URL: {str(e)}")
+
