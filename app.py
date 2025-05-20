@@ -17,6 +17,9 @@ app = FastAPI(
 class URLData(BaseModel):
     """Model containing the URL to fetch HTML from."""
     url: str = Field(..., description="The URL to fetch HTML content from.")
+@app.get("/")
+def root():
+    return {"message": "FastAPI server is running"}
 
 @app.post("/fetch-html/", response_description="HTML content of the provided URL")
 def fetch_html(data: URLData):
